@@ -1,18 +1,64 @@
 {
-  "name": "lms",
+  "name": "maktabati",
   "version": "1.0.0",
-  "description": "",
+  "description": "MakTabati - Library Management System",
   "main": "dist/main/main.js",
   "type": "module",
   "scripts": {
     "dev": "concurrently -n \"Vite,Backend,Electron\" -c \"blue,green,magenta\" \"npm run dev:renderer\" \"npm run dev:backend\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
     "dev:renderer": "vite",
-    "dev:backend": "tsc src/backend/server.ts --outDir dist/backend --module esnext --moduleResolution node --esModuleInterop && node dist/backend/server.js",
+    "dev:backend": "tsc src/backend/server.ts src/backend/db.ts --outDir dist/backend --module esnext --moduleResolution node --esModuleInterop && node dist/backend/server.js",
     "dev:electron": "tsc src/main/main.ts src/main/preload.ts --outDir dist/main --module esnext --moduleResolution node && electron .",
     "build": "npm run build:renderer && npm run build:main && npm run build:backend && electron-builder",
     "build:renderer": "vite build",
     "build:main": "tsc src/main/main.ts src/main/preload.ts --outDir dist/main --module esnext --moduleResolution node",
-    "build:backend": "tsc src/backend/server.ts --outDir dist/backend --module esnext --moduleResolution node --esModuleInterop"
+    "build:backend": "tsc src/backend/server.ts src/backend/db.ts --outDir dist/backend --module esnext --moduleResolution node --esModuleInterop",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "com.maktabati.app",
+    "productName": "MakTabati",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/main/**/*",
+      "dist/renderer/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/backend",
+        "to": "backend",
+        "filter": [
+          "**/*.js"
+        ]
+      },
+      {
+        "from": "node_modules",
+        "to": "node_modules"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/sqlite3/**/*"
+    ]
   },
   "keywords": [],
   "author": "",
@@ -32,6 +78,7 @@
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.3.0",

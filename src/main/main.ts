@@ -10,8 +10,21 @@ let mainWindow: BrowserWindow | null;
 let backendProcess: ChildProcess | null;
 
 function startBackend() {
-    const serverPath = path.join(__dirname, '..', 'backend', 'server.js');
-    backendProcess = fork(serverPath);
+    const serverPath = app.isPackaged
+        ? path.join(process.resourcesPath, 'backend', 'server.js')
+        : path.join(__dirname, '..', 'backend', 'server.js');
+
+    const nodePath = app.isPackaged
+        ? path.join(process.resourcesPath, 'node_modules')
+        : path.join(__dirname, '..', '..', 'node_modules');
+
+    backendProcess = fork(serverPath, [], {
+        env: {
+            ...process.env,
+            NODE_ENV: app.isPackaged ? 'production' : 'development',
+            NODE_PATH: nodePath
+        }
+    });
 
     backendProcess.on('message', (msg) => {
         console.log('Backend message:', msg);
@@ -19,6 +32,10 @@ function startBackend() {
 
     backendProcess.on('error', (err) => {
         console.error('Backend error:', err);
+    });
+
+    backendProcess.on('exit', (code) => {
+        console.error('Backend exited with code:', code);
     });
 }
 
@@ -31,10 +48,9 @@ function createWindow() {
             contextIsolation: true,
             preload: path.join(__dirname, 'preload.js')
         },
-        title: "Maktabati - Library Management System"
+        title: "MakTabati - Library Management System"
     });
 
-    
     if (process.env.NODE_ENV === 'development') {
         mainWindow.loadURL('http://localhost:5173');
         mainWindow.webContents.openDevTools();
