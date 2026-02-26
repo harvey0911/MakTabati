@@ -1,13 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { inventoryApi } from '../../services/api';
-import { History, ArrowUpRight, ArrowDownLeft, Ban, Plus, X } from 'lucide-react';
+import { History, ArrowUpRight, ArrowDownLeft, Ban, Plus, X, ShoppingCart, RotateCcw } from 'lucide-react';
+import Modal from '../Modal';
 
-const CashflowLayout = () => {
+const CashflowLayout = ({ onNavigateToSell, onNavigateToReturn }: { onNavigateToSell?: () => void, onNavigateToReturn?: () => void }) => {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    
+    // Modal Alert state
+    const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string, type: 'info' | 'success' | 'error' | 'confirm', onConfirm?: () => void }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
+
+    const showAlert = (title: string, message: string, type: 'info' | 'success' | 'error' | 'confirm' = 'info', onConfirm?: () => void) => {
+        setModalConfig({ isOpen: true, title, message, type, onConfirm });
+    };
+
     const [showModal, setShowModal] = useState(false);
     const [transactionType, setTransactionType] = useState<'SALE' | 'RETURN'>('SALE');
     const [amount, setAmount] = useState<number | ''>('');
@@ -52,12 +64,12 @@ const CashflowLayout = () => {
 
     const handleManualTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!amount || amount <= 0) return alert('Enter a valid amount');
+        if (!amount || amount <= 0) return showAlert('Error', 'Enter a valid amount', 'error');
 
         if (transactionType === 'SALE' && selectedProductId !== '') {
             const product = products.find(p => p.id === selectedProductId);
             if (product && (quantity as number) > product.total_stock) {
-                return alert(`Cannot sell more than available stock (${product.total_stock})`);
+                return showAlert('Error', `Cannot sell more than available stock (${product.total_stock})`, 'error');
             }
         }
 
@@ -72,11 +84,12 @@ const CashflowLayout = () => {
                 quantity: quantity === '' ? undefined : quantity
             });
             setShowModal(false);
-            await fetchTransactions(); 
-            inventoryApi.getProducts().then(setProducts).catch(console.error); 
+            await fetchTransactions();
+            inventoryApi.getProducts().then(setProducts).catch(console.error);
+            showAlert('Success', `${transactionType === 'SALE' ? 'Sale' : 'Return'} recorded successfully!`, 'success');
         } catch (error) {
             console.error(error);
-            alert(`Failed to record ${transactionType}`);
+            showAlert('Error', `Failed to record ${transactionType}`, 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -85,10 +98,10 @@ const CashflowLayout = () => {
     const getTypeColor = (type: string) => {
         switch (type) {
             case 'SALE':
-                return { bg: '#ecfdf5', text: '#10b981', icon: <ArrowDownLeft size={16} /> }; 
+                return { bg: '#ecfdf5', text: '#10b981', icon: <ArrowDownLeft size={16} /> };
             case 'RETURN':
             case 'EXPENSE':
-                return { bg: '#fef2f2', text: '#ef4444', icon: <ArrowUpRight size={16} /> }; 
+                return { bg: '#fef2f2', text: '#ef4444', icon: <ArrowUpRight size={16} /> };
             default:
                 return { bg: 'var(--background)', text: 'var(--text-muted)', icon: <Ban size={16} /> };
         }
@@ -96,24 +109,24 @@ const CashflowLayout = () => {
 
     if (loading) return <div>Loading cashflow...</div>;
 
-    
+
     const totalSales = transactions.filter(t => t.type === 'SALE').reduce((sum, t) => sum + t.amount, 0);
     const totalReturns = transactions.filter(t => t.type === 'RETURN').reduce((sum, t) => sum + t.amount, 0);
     const netCashflow = totalSales - totalReturns;
 
     return (
         <div style={{ width: '100%' }}>
-            {}
+            { }
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '1.5rem' }}>
-                <button onClick={() => openModal('SALE')} style={{ ...actionBtnStyle, backgroundColor: '#10b981', color: 'white' }}>
-                    <Plus size={16} /> Sell Product (In)
+                <button onClick={onNavigateToSell} style={{ ...actionBtnStyle, backgroundColor: '#10b981', color: 'white' }}>
+                    <ShoppingCart size={16} /> New Sale
                 </button>
-                <button onClick={() => openModal('RETURN')} style={{ ...actionBtnStyle, backgroundColor: '#ef4444', color: 'white' }}>
-                    <ArrowUpRight size={16} /> Return Product (Out)
+                <button onClick={onNavigateToReturn} style={{ ...actionBtnStyle, backgroundColor: '#ef4444', color: 'white' }}>
+                    <RotateCcw size={16} /> New Return
                 </button>
             </div>
 
-            {}
+            { }
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
                 <div className="card" style={{ padding: '1.5rem' }}>
                     <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '8px' }}>Total Sales (In)</div>
@@ -131,7 +144,7 @@ const CashflowLayout = () => {
                 </div>
             </div>
 
-            {}
+            { }
             <div className="card" style={{ padding: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.5rem' }}>Transaction History</h3>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -182,7 +195,7 @@ const CashflowLayout = () => {
                 </table>
             </div>
 
-            {}
+            { }
             {showModal && (
                 <div style={modalOverlayStyle}>
                     <div style={modalContentStyle}>
@@ -262,6 +275,14 @@ const CashflowLayout = () => {
                     </div>
                 </div>
             )}
+            <Modal
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                type={modalConfig.type}
+                onConfirm={modalConfig.onConfirm}
+            />
         </div>
     );
 };

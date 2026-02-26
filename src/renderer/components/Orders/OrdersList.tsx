@@ -3,10 +3,23 @@ import { inventoryApi } from '../../services/api';
 import { ShoppingBag, FileDown, Plus, ExternalLink, CheckCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Modal from '../Modal';
 
 const OrdersList = ({ onNewOrder }: { onNewOrder: () => void }) => {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Modal Alert state
+    const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string, type: 'info' | 'success' | 'error' | 'confirm', onConfirm?: () => void }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
+
+    const showAlert = (title: string, message: string, type: 'info' | 'success' | 'error' | 'confirm' = 'info', onConfirm?: () => void) => {
+        setModalConfig({ isOpen: true, title, message, type, onConfirm });
+    };
 
     const fetchOrders = async () => {
         try {
@@ -24,37 +37,42 @@ const OrdersList = ({ onNewOrder }: { onNewOrder: () => void }) => {
     }, []);
 
     const handleCompleteOrder = async (id: number) => {
-        if (!window.confirm('Are you sure you want to mark this order as completed? This will update inventory and cashflow.')) {
-            return;
-        }
-        try {
-            await inventoryApi.completeOrder(id);
-            fetchOrders(); 
-        } catch (error) {
-            console.error("Failed to complete order", error);
-            alert("Failed to complete order.");
-        }
+        showAlert(
+            'Confirm Completion',
+            'Are you sure you want to mark this order as completed? This will update inventory and cashflow.',
+            'confirm',
+            async () => {
+                try {
+                    await inventoryApi.completeOrder(id);
+                    fetchOrders();
+                    showAlert('Success', 'Order completed successfully!', 'success');
+                } catch (error) {
+                    console.error("Failed to complete order", error);
+                    showAlert('Error', 'Failed to complete order.', 'error');
+                }
+            }
+        );
     };
 
     const generatePdf = (order: any) => {
         const doc = new jsPDF();
 
-        
+
         doc.setFontSize(20);
         doc.text('MakTabati', 14, 22);
 
         doc.setFontSize(14);
         doc.text('Order Receipt', 14, 32);
 
-        
+
         doc.setFontSize(10);
         doc.text(`Order ID: #${order.id}`, 14, 45);
         doc.text(`Date: ${new Date(order.created_at).toLocaleString()}`, 14, 52);
         doc.text(`Customer: ${order.customer_name}`, 14, 59);
 
-        
-        
-        
+
+
+
         autoTable(doc, {
             startY: 70,
             head: [['Description', 'Value']],
@@ -65,7 +83,7 @@ const OrdersList = ({ onNewOrder }: { onNewOrder: () => void }) => {
             ],
         });
 
-        
+
         doc.save(`Order_${order.id}.pdf`);
     };
 
@@ -160,6 +178,14 @@ const OrdersList = ({ onNewOrder }: { onNewOrder: () => void }) => {
                     ))}
                 </tbody>
             </table>
+            <Modal
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                type={modalConfig.type}
+                onConfirm={modalConfig.onConfirm}
+            />
         </div>
     );
 };

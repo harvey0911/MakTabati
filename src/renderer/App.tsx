@@ -6,22 +6,36 @@ import { SalesChart } from './components/Charts';
 import InventoryLayout from './components/Inventory/InventoryLayout';
 import OrdersLayout from './components/Orders/OrdersLayout';
 import CashflowLayout from './components/Cashflow/CashflowLayout';
-import { DollarSign, Package, ShoppingCart } from 'lucide-react';
+import Settings from './components/Settings';
+import LoginPage from './components/LoginPage';
+import SellView from './components/Sell/SellView';
+import ReturnView from './components/Return/ReturnView';
+import { DollarSign, Package, ShoppingCart, RotateCcw } from 'lucide-react';
 import { inventoryApi } from './services/api';
 
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [activeView, setActiveView] = useState('dashboard');
   const [stats, setStats] = useState({ total_revenue: 0, total_products: 0, total_orders: 0 });
 
   useEffect(() => {
-    if (activeView === 'dashboard') {
+    if (isLoggedIn && activeView === 'dashboard') {
       inventoryApi.getDashboardStats().then(setStats).catch(console.error);
     }
-  }, [activeView]);
+  }, [activeView, isLoggedIn]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    setIsLoggedIn(false);
+  };
+
+  if (!isLoggedIn) {
+    return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
+  }
 
   return (
     <div className="dashboard-container">
-      <Sidebar activeView={activeView} setActiveView={setActiveView} />
+      <Sidebar activeView={activeView} setActiveView={setActiveView} onLogout={handleLogout} />
 
       <main className="main-content">
         <Header />
@@ -67,7 +81,22 @@ function App() {
         )}
 
         {activeView === 'cashflow' && (
-          <CashflowLayout />
+          <CashflowLayout
+            onNavigateToSell={() => setActiveView('sell')}
+            onNavigateToReturn={() => setActiveView('return')}
+          />
+        )}
+
+        {activeView === 'sell' && (
+          <SellView onComplete={() => setActiveView('cashflow')} />
+        )}
+
+        {activeView === 'return' && (
+          <ReturnView onComplete={() => setActiveView('cashflow')} />
+        )}
+
+        {activeView === 'settings' && (
+          <Settings />
         )}
 
       </main>

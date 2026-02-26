@@ -10,7 +10,7 @@ const api = axios.create({
 });
 
 export const inventoryApi = {
-    
+
     getProducts: async () => {
         const response = await api.get('/inventory/products');
         return response.data;
@@ -20,7 +20,7 @@ export const inventoryApi = {
         return response.data;
     },
 
-    
+
     getMovements: async () => {
         const response = await api.get('/inventory/movements');
         return response.data;
@@ -30,13 +30,13 @@ export const inventoryApi = {
         return response.data;
     },
 
-    
+
     getLowStock: async () => {
         const response = await api.get('/inventory/low-stock');
         return response.data;
     },
 
-    
+
     getOrders: async () => {
         const response = await api.get('/orders');
         return response.data;
@@ -50,7 +50,7 @@ export const inventoryApi = {
         return response.data;
     },
 
-    
+
     getTransactions: async () => {
         const response = await api.get('/cashflow/transactions');
         return response.data;
@@ -60,13 +60,35 @@ export const inventoryApi = {
         return response.data;
     },
 
-    
+
     getDashboardSales: async () => {
         const response = await api.get('/dashboard/sales');
         return response.data;
     },
     getDashboardStats: async () => {
         const response = await api.get('/dashboard/stats');
+        return response.data;
+    },
+
+    // Auth & Settings
+    login: async (password: string) => {
+        const response = await api.post('/login', { password });
+        return response.data;
+    },
+    changePassword: async (passwords: any) => {
+        const response = await api.post('/settings/change-password', passwords);
+        return response.data;
+    },
+    clearDatabase: async (password: string) => {
+        const response = await api.post('/settings/clear-database', { password });
+        return response.data;
+    },
+    recordSale: async (saleData: { items: any[], total_amount: number, note?: string }) => {
+        const response = await api.post('/sales', saleData);
+        return response.data;
+    },
+    recordReturn: async (returnData: { items: any[], total_amount: number, note?: string }) => {
+        const response = await api.post('/returns', returnData);
         return response.data;
     }
 };

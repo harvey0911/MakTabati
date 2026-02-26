@@ -19,7 +19,7 @@ export const db = new sqlite3.Database(dbPath, (err) => {
 
 function initializeDatabase() {
     db.serialize(() => {
-        
+
         db.run(`
             CREATE TABLE IF NOT EXISTS Product (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +34,7 @@ function initializeDatabase() {
             )
         `);
 
-        
+
         db.run(`
             CREATE TABLE IF NOT EXISTS StockLocation (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,7 +42,7 @@ function initializeDatabase() {
             )
         `);
 
-        
+
         db.run(`
             CREATE TABLE IF NOT EXISTS InventoryStock (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,7 +55,7 @@ function initializeDatabase() {
             )
         `);
 
-        
+
         db.run(`
             CREATE TABLE IF NOT EXISTS StockMovement (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,7 +74,7 @@ function initializeDatabase() {
             )
         `);
 
-        
+
         db.run(`
             CREATE TABLE IF NOT EXISTS OrderTable (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,7 +97,7 @@ function initializeDatabase() {
             )
         `);
 
-        
+
         db.run(`
             CREATE TABLE IF NOT EXISTS TransactionLog (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,12 +111,26 @@ function initializeDatabase() {
             )
         `);
 
-        
+        db.run(`
+            CREATE TABLE IF NOT EXISTS SystemSettings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT UNIQUE NOT NULL,
+                value TEXT NOT NULL
+            )
+        `);
+
         db.get("SELECT count(*) as count FROM StockLocation", (err, row: any) => {
             if (row && row.count === 0) {
                 console.log("Seeding initial location...");
                 db.run(`INSERT INTO StockLocation (name) VALUES ('Main Warehouse')`);
                 db.run(`INSERT INTO StockLocation (name) VALUES ('Store Front')`);
+            }
+        });
+
+        db.get("SELECT count(*) as count FROM SystemSettings WHERE key = 'admin_password'", (err, row: any) => {
+            if (row && row.count === 0) {
+                console.log("Seeding default admin password...");
+                db.run(`INSERT INTO SystemSettings (key, value) VALUES ('admin_password', 'admin')`);
             }
         });
     });

@@ -2,22 +2,29 @@ import React from 'react';
 import {
     LayoutDashboard,
     ShoppingCart,
+    RotateCcw,
     Package,
     History,
-    Library
+    Library,
+    Settings as SettingsIcon,
+    LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
     activeView: string;
     setActiveView: (view: string) => void;
+    onLogout: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onLogout }) => {
     const menuItems = [
         { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { id: 'orders', icon: <ShoppingCart size={20} />, label: 'Orders' },
-        { id: 'inventory', icon: <Package size={20} />, label: 'Inventory' },
+        { id: 'sell', icon: <ShoppingCart size={20} />, label: 'Sell' },
+        { id: 'return', icon: <RotateCcw size={20} />, label: 'Return' },
+        { id: 'orders', icon: <Package size={20} />, label: 'Orders' },
+        { id: 'inventory', icon: <Library size={20} />, label: 'Inventory' },
         { id: 'cashflow', icon: <History size={20} />, label: 'Cashflow' },
+        { id: 'settings', icon: <SettingsIcon size={20} />, label: 'Settings' },
     ];
 
     return (
@@ -44,6 +51,18 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
                         </div>
                     );
                 })}
+
+                <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
+                    <div
+                        style={itemStyle}
+                        onClick={onLogout}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                        <span style={{ color: '#ef4444' }}><LogOut size={20} /></span>
+                        <span style={{ color: '#ef4444', marginLeft: '12px', fontWeight: '500' }}>Log Out</span>
+                    </div>
+                </div>
             </nav>
         </div>
     );

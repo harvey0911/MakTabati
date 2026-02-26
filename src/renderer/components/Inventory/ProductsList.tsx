@@ -1,13 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { inventoryApi } from '../../services/api';
 import { PackageSearch, AlertTriangle, Plus, X } from 'lucide-react';
+import Modal from '../Modal';
 
 const ProductsList = () => {
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
 
-    
+    // Adjust Stock Modal state
+    const [showAdjustModal, setShowAdjustModal] = useState(false);
+    const [adjustConfig, setAdjustConfig] = useState({ productId: 0, qty: '', reason: 'Manual Adjustment' });
+
+    // Global Modal Alert state
+    const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string, type: 'info' | 'success' | 'error' | 'confirm', onConfirm?: () => void }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
+
+    const showAlert = (title: string, message: string, type: 'info' | 'success' | 'error' | 'confirm' = 'info', onConfirm?: () => void) => {
+        setModalConfig({ isOpen: true, title, message, type, onConfirm });
+    };
+
     const [newProduct, setNewProduct] = useState({
         name: '',
         sku: '',
@@ -32,27 +48,27 @@ const ProductsList = () => {
         fetchProducts();
     }, []);
 
-    const handleAdjustStock = async (product_id: number) => {
-        const qtyStr = prompt("Enter adjustment amount (+ for adding, - for removing):");
-        if (!qtyStr) return;
-        const qty = parseInt(qtyStr, 10);
-        if (isNaN(qty)) return alert("Invalid amount");
-
-        const reason = prompt("Enter reason for adjustment (e.g., lost, stock count correction):") || "Manual Adjustment";
+    const handleAdjustStock = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const qty = parseInt(adjustConfig.qty, 10);
+        if (isNaN(qty)) return showAlert("Error", "Invalid amount", "error");
 
         try {
             await inventoryApi.recordMovement({
-                product_id: product_id,
-                location_id: 1, 
+                product_id: adjustConfig.productId,
+                location_id: 1,
                 type: 'ADJUSTMENT',
                 quantity: qty,
                 created_by: 'Admin',
-                note: reason
+                note: adjustConfig.reason
             });
+            setShowAdjustModal(false);
+            setAdjustConfig({ productId: 0, qty: '', reason: 'Manual Adjustment' });
             await fetchProducts();
+            showAlert("Success", "Stock adjusted successfully!", "success");
         } catch (error) {
             console.error(error);
-            alert("Failed to adjust stock");
+            showAlert("Error", "Failed to adjust stock", "error");
         }
     };
 
@@ -63,9 +79,10 @@ const ProductsList = () => {
             setShowAddModal(false);
             setNewProduct({ name: '', sku: '', unit: 'pcs', cost_price: 0, sell_price: 0, reorder_level: 10 });
             await fetchProducts();
+            showAlert("Success", "Product added successfully!", "success");
         } catch (error) {
             console.error(error);
-            alert("Failed to add product");
+            showAlert("Error", "Failed to add product", "error");
         }
     };
 
@@ -122,7 +139,10 @@ const ProductsList = () => {
                             </td>
                             <td style={{ padding: '12px' }}>
                                 <button
-                                    onClick={() => handleAdjustStock(p.id)}
+                                    onClick={() => {
+                                        setAdjustConfig({ ...adjustConfig, productId: p.id });
+                                        setShowAdjustModal(true);
+                                    }}
                                     style={{
                                         padding: '6px 12px', borderRadius: '6px',
                                         border: '1px solid #e2e8f0', backgroundColor: 'var(--background)',
@@ -136,7 +156,7 @@ const ProductsList = () => {
                 </tbody>
             </table>
 
-            {}
+            { }
             {showAddModal && (
                 <div style={modalOverlayStyle}>
                     <div style={modalContentStyle}>
@@ -185,6 +205,59 @@ const ProductsList = () => {
                     </div>
                 </div>
             )}
+
+            {/* Adjust Stock Modal */}
+            {showAdjustModal && (
+                <div style={modalOverlayStyle}>
+                    <div style={modalContentStyle}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Adjust Inventory Stock</h2>
+                            <button onClick={() => setShowAdjustModal(false)} style={closeBtnStyle}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAdjustStock} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={labelStyle}>Adjustment Quantity (+ to add, - to remove)</label>
+                                <input
+                                    required
+                                    type="number"
+                                    autoFocus
+                                    style={inputStyle}
+                                    value={adjustConfig.qty}
+                                    onChange={e => setAdjustConfig({ ...adjustConfig, qty: e.target.value })}
+                                    placeholder="e.g. 10 or -5"
+                                />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Reason for Adjustment</label>
+                                <input
+                                    type="text"
+                                    style={inputStyle}
+                                    value={adjustConfig.reason}
+                                    onChange={e => setAdjustConfig({ ...adjustConfig, reason: e.target.value })}
+                                    placeholder="e.g. Lost, Stock count, Damage"
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                                <button type="button" onClick={() => setShowAdjustModal(false)} style={cancelBtnStyle}>Cancel</button>
+                                <button type="submit" style={submitBtnStyle}>Apply Adjustment</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            <Modal
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                type={modalConfig.type}
+                onConfirm={modalConfig.onConfirm}
+            />
         </div>
     );
 };

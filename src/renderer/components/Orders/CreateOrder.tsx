@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { inventoryApi } from '../../services/api';
-import { Plus, Minus, Trash2, ArrowLeft } from 'lucide-react';
+import { Plus, Minus, Trash2, ArrowLeft, X } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Modal from '../Modal';
 
 interface Product {
     id: number;
@@ -25,11 +26,23 @@ const CreateOrder = ({ onBack, onOrderCreated }: { onBack: () => void, onOrderCr
     const [customerName, setCustomerName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Modal Alert state
+    const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string, type: 'info' | 'success' | 'error' | 'confirm', onConfirm?: () => void }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
+
+    const showAlert = (title: string, message: string, type: 'info' | 'success' | 'error' | 'confirm' = 'info', onConfirm?: () => void) => {
+        setModalConfig({ isOpen: true, title, message, type, onConfirm });
+    };
+
     useEffect(() => {
         const fetchProducts = async () => {
             try {
                 const data = await inventoryApi.getProducts();
-                
+
                 setAvailableProducts(data.filter((p: any) => p.active));
             } catch (error) {
                 console.error("Failed to fetch products", error);
@@ -99,7 +112,7 @@ const CreateOrder = ({ onBack, onOrderCreated }: { onBack: () => void, onOrderCr
     };
 
     const handleSubmit = async () => {
-        if (cart.length === 0) return alert('Cart is empty.');
+        if (cart.length === 0) return showAlert('Information', 'Cart is empty.', 'info');
 
         setIsSubmitting(true);
         try {
@@ -115,15 +128,17 @@ const CreateOrder = ({ onBack, onOrderCreated }: { onBack: () => void, onOrderCr
 
             const response = await inventoryApi.createOrder(orderData);
 
-            
-            if (window.confirm('Order created successfully! Would you like to download the receipt PDF?')) {
-                generatePdf(response.order_id);
-            }
+            showAlert(
+                'Order Created',
+                'Order created successfully! Would you like to download the receipt PDF?',
+                'confirm',
+                () => generatePdf(response.order_id)
+            );
 
-            onOrderCreated(); 
+            onOrderCreated();
         } catch (error) {
             console.error(error);
-            alert('Failed to process order.');
+            showAlert('Error', 'Failed to process order.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -132,7 +147,7 @@ const CreateOrder = ({ onBack, onOrderCreated }: { onBack: () => void, onOrderCr
     return (
         <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem', height: 'calc(100vh - 150px)' }}>
 
-            {}
+            { }
             <div className="card" style={{ flex: 6, padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                     <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -175,7 +190,7 @@ const CreateOrder = ({ onBack, onOrderCreated }: { onBack: () => void, onOrderCr
                 </div>
             </div>
 
-            {}
+            { }
             <div className="card" style={{ flex: 4, padding: '1.5rem', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--background)' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.5rem' }}>Current Order</h3>
 
@@ -236,6 +251,15 @@ const CreateOrder = ({ onBack, onOrderCreated }: { onBack: () => void, onOrderCr
                     </button>
                 </div>
             </div>
+
+            <Modal
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                type={modalConfig.type}
+                onConfirm={modalConfig.onConfirm}
+            />
         </div>
     );
 };
