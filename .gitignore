@@ -1,0 +1,59 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Node modules
+node_modules/
+jspm_packages/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+dist-electron/
+release/
+out/
+build/
+coverage/
+*.DS_Store
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Electron packager output
+*-win32-x64/
+*-linux-x64/
+*-darwin-x64/
+*.app/
+*.exe
+*.dmg
+*.deb
+*.rpm
+
+# SQLite database files
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+sqlite3.db
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary and artifact files
+.gemini/
+/tmp/
+brain/
+artifacts/
+*.pdf
