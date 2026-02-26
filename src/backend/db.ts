@@ -6,7 +6,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
-const dbPath = path.resolve(__dirname, '..', '..', 'MakTabati.db');
+import fs from 'fs';
+
+const dbPath = process.env.USER_DATA_PATH
+    ? path.join(process.env.USER_DATA_PATH, 'MakTabati.db')
+    : path.resolve(__dirname, '..', '..', 'MakTabati.db');
+
+// Ensure database directory exists
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+}
 
 export const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {

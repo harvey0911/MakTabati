@@ -22,7 +22,8 @@ function startBackend() {
         env: {
             ...process.env,
             NODE_ENV: app.isPackaged ? 'production' : 'development',
-            NODE_PATH: nodePath
+            NODE_PATH: nodePath,
+            USER_DATA_PATH: app.getPath('userData')
         }
     });
 
