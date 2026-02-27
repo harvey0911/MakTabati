@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { inventoryApi } from '../../services/api';
-import { History, ArrowUpRight, ArrowDownLeft, Ban, Plus, X, ShoppingCart, RotateCcw } from 'lucide-react';
+import { History, ArrowUpRight, ArrowDownLeft, Ban, Plus, X } from 'lucide-react';
 import Modal from '../Modal';
+import SellView from '../Sell/SellView';
+import ReturnView from '../Return/ReturnView';
 
-const CashflowLayout = ({ onNavigateToSell, onNavigateToReturn }: { onNavigateToSell?: () => void, onNavigateToReturn?: () => void }) => {
+const CashflowLayout = () => {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeSubView, setActiveSubView] = useState<'list' | 'sell' | 'return'>('list');
 
     // Modal Alert state
     const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string, type: 'info' | 'success' | 'error' | 'confirm', onConfirm?: () => void }>({
@@ -19,14 +22,6 @@ const CashflowLayout = ({ onNavigateToSell, onNavigateToReturn }: { onNavigateTo
     const showAlert = (title: string, message: string, type: 'info' | 'success' | 'error' | 'confirm' = 'info', onConfirm?: () => void) => {
         setModalConfig({ isOpen: true, title, message, type, onConfirm });
     };
-
-    const [showModal, setShowModal] = useState(false);
-    const [transactionType, setTransactionType] = useState<'SALE' | 'RETURN'>('SALE');
-    const [amount, setAmount] = useState<number | ''>('');
-    const [note, setNote] = useState('');
-    const [selectedProductId, setSelectedProductId] = useState<number | ''>('');
-    const [quantity, setQuantity] = useState<number | ''>('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fetchTransactions = async () => {
         try {
@@ -44,57 +39,6 @@ const CashflowLayout = ({ onNavigateToSell, onNavigateToReturn }: { onNavigateTo
         inventoryApi.getProducts().then(setProducts).catch(console.error);
     }, []);
 
-    useEffect(() => {
-        if (selectedProductId !== '' && quantity !== '') {
-            const product = products.find(p => p.id === selectedProductId);
-            if (product) {
-                setAmount(product.sell_price * (quantity as number));
-            }
-        }
-    }, [selectedProductId, quantity, products]);
-
-    const openModal = (type: 'SALE' | 'RETURN') => {
-        setTransactionType(type);
-        setAmount('');
-        setNote('');
-        setSelectedProductId('');
-        setQuantity('');
-        setShowModal(true);
-    };
-
-    const handleManualTransaction = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!amount || amount <= 0) return showAlert('Error', 'Enter a valid amount', 'error');
-
-        if (transactionType === 'SALE' && selectedProductId !== '') {
-            const product = products.find(p => p.id === selectedProductId);
-            if (product && (quantity as number) > product.total_stock) {
-                return showAlert('Error', `Cannot sell more than available stock (${product.total_stock})`, 'error');
-            }
-        }
-
-        setIsSubmitting(true);
-        try {
-            await inventoryApi.recordTransaction({
-                type: transactionType,
-                amount: Number(amount),
-                note: note || `Manual ${transactionType}`,
-                created_by: 'Admin',
-                product_id: selectedProductId === '' ? undefined : selectedProductId,
-                quantity: quantity === '' ? undefined : quantity
-            });
-            setShowModal(false);
-            await fetchTransactions();
-            inventoryApi.getProducts().then(setProducts).catch(console.error);
-            showAlert('Success', `${transactionType === 'SALE' ? 'Sale' : 'Return'} recorded successfully!`, 'success');
-        } catch (error) {
-            console.error(error);
-            showAlert('Error', `Failed to record ${transactionType}`, 'error');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
     const getTypeColor = (type: string) => {
         switch (type) {
             case 'SALE':
@@ -109,6 +53,13 @@ const CashflowLayout = ({ onNavigateToSell, onNavigateToReturn }: { onNavigateTo
 
     if (loading) return <div>Loading cashflow...</div>;
 
+    if (activeSubView === 'sell') {
+        return <SellView onBack={() => setActiveSubView('list')} onSaleRecorded={() => { fetchTransactions(); setActiveSubView('list'); }} />;
+    }
+
+    if (activeSubView === 'return') {
+        return <ReturnView onBack={() => setActiveSubView('list')} onReturnRecorded={() => { fetchTransactions(); setActiveSubView('list'); }} />;
+    }
 
     const totalSales = transactions.filter(t => t.type === 'SALE').reduce((sum, t) => sum + t.amount, 0);
     const totalReturns = transactions.filter(t => t.type === 'RETURN').reduce((sum, t) => sum + t.amount, 0);
@@ -116,13 +67,12 @@ const CashflowLayout = ({ onNavigateToSell, onNavigateToReturn }: { onNavigateTo
 
     return (
         <div style={{ width: '100%' }}>
-            { }
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '1.5rem' }}>
-                <button onClick={onNavigateToSell} style={{ ...actionBtnStyle, backgroundColor: '#10b981', color: 'white' }}>
-                    <ShoppingCart size={16} /> New Sale
+                <button onClick={() => setActiveSubView('sell')} style={{ ...actionBtnStyle, backgroundColor: '#10b981', color: 'white' }}>
+                    <Plus size={16} /> Record Sale (Cash In)
                 </button>
-                <button onClick={onNavigateToReturn} style={{ ...actionBtnStyle, backgroundColor: '#ef4444', color: 'white' }}>
-                    <RotateCcw size={16} /> New Return
+                <button onClick={() => setActiveSubView('return')} style={{ ...actionBtnStyle, backgroundColor: '#ef4444', color: 'white' }}>
+                    <ArrowUpRight size={16} /> Record Return (Cash Out)
                 </button>
             </div>
 
@@ -196,85 +146,6 @@ const CashflowLayout = ({ onNavigateToSell, onNavigateToReturn }: { onNavigateTo
             </div>
 
             { }
-            {showModal && (
-                <div style={modalOverlayStyle}>
-                    <div style={modalContentStyle}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Record {transactionType}</h2>
-                            <button onClick={() => setShowModal(false)} style={closeBtnStyle}>
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleManualTransaction} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                                <label style={labelStyle}>Product (Optional)</label>
-                                <select
-                                    style={inputStyle}
-                                    value={selectedProductId}
-                                    onChange={e => setSelectedProductId(e.target.value === '' ? '' : Number(e.target.value))}
-                                >
-                                    <option value="">-- No Product (Manual Entry) --</option>
-                                    {products.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name} (Stock: {p.total_stock})</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {selectedProductId !== '' && (
-                                <div>
-                                    <label style={labelStyle}>Quantity</label>
-                                    <input
-                                        required
-                                        type="number"
-                                        min="1"
-                                        style={inputStyle}
-                                        value={quantity}
-                                        onChange={e => setQuantity(e.target.value === '' ? '' : parseInt(e.target.value))}
-                                    />
-                                </div>
-                            )}
-
-                            <div>
-                                <label style={labelStyle}>Amount ($)</label>
-                                <input
-                                    required
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    style={inputStyle}
-                                    value={amount}
-                                    onChange={e => setAmount(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                />
-                            </div>
-
-                            <div>
-                                <label style={labelStyle}>Note / Reason</label>
-                                <textarea
-                                    style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
-                                    value={note}
-                                    onChange={e => setNote(e.target.value)}
-                                    placeholder={`Reason for ${transactionType.toLowerCase()}...`}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-                                <button type="button" onClick={() => setShowModal(false)} style={cancelBtnStyle}>Cancel</button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    style={{
-                                        ...submitBtnStyle,
-                                        backgroundColor: transactionType === 'SALE' ? '#10b981' : '#ef4444'
-                                    }}
-                                >
-                                    {isSubmitting ? 'Saving...' : `Save ${transactionType}`}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
             <Modal
                 isOpen={modalConfig.isOpen}
                 onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}

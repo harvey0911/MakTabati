@@ -8,9 +8,7 @@ import OrdersLayout from './components/Orders/OrdersLayout';
 import CashflowLayout from './components/Cashflow/CashflowLayout';
 import Settings from './components/Settings';
 import LoginPage from './components/LoginPage';
-import SellView from './components/Sell/SellView';
-import ReturnView from './components/Return/ReturnView';
-import { DollarSign, Package, ShoppingCart, RotateCcw } from 'lucide-react';
+import { DollarSign, Package, ShoppingCart } from 'lucide-react';
 import { inventoryApi } from './services/api';
 
 function App() {
@@ -81,18 +79,7 @@ function App() {
         )}
 
         {activeView === 'cashflow' && (
-          <CashflowLayout
-            onNavigateToSell={() => setActiveView('sell')}
-            onNavigateToReturn={() => setActiveView('return')}
-          />
-        )}
-
-        {activeView === 'sell' && (
-          <SellView onComplete={() => setActiveView('cashflow')} />
-        )}
-
-        {activeView === 'return' && (
-          <ReturnView onComplete={() => setActiveView('cashflow')} />
+          <CashflowLayout />
         )}
 
         {activeView === 'settings' && (

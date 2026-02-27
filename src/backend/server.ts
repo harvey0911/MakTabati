@@ -221,8 +221,11 @@ app.put('/api/orders/:id/complete', async (req, res) => {
             );
 
             await runQuery(
-                `UPDATE InventoryStock SET quantity_on_hand = quantity_on_hand + ? WHERE product_id = ? AND location_id = ?`,
-                [item.quantity, item.product_id, locationId]
+                `INSERT INTO InventoryStock (product_id, location_id, quantity_on_hand)
+                 VALUES (?, ?, ?)
+                 ON CONFLICT(product_id, location_id) DO UPDATE SET
+                 quantity_on_hand = quantity_on_hand + EXCLUDED.quantity_on_hand`,
+                [item.product_id, locationId, item.quantity]
             );
         }
 
@@ -254,7 +257,9 @@ app.get('/api/cashflow/transactions', (req, res) => {
 });
 
 app.post('/api/cashflow/transaction', async (req, res) => {
-    const { type, amount, note, created_by, product_id, quantity } = req.body;
+    const { type, amount, note, created_by, items } = req.body;
+
+    // items should be [{ product_id, quantity, unit_price }]
     if (!['SALE', 'RETURN', 'EXPENSE'].includes(type) || !amount) {
         return res.status(400).json({ error: 'Invalid type or missing amount' });
     }
@@ -264,24 +269,29 @@ app.post('/api/cashflow/transaction', async (req, res) => {
 
         const txResult = await runQuery(
             `INSERT INTO TransactionLog (type, amount, note, created_by) VALUES (?, ?, ?, ?)`,
-            [type, amount, note, created_by || 'System']
+            [type, amount, note || `Manual ${type}`, created_by || 'System']
         );
         const transactionId = txResult.lastID;
 
-
-        if (product_id && quantity) {
+        if (items && Array.isArray(items) && items.length > 0) {
             const locationId = 1;
-            const qtyChange = type === 'SALE' ? -quantity : quantity;
+            for (const item of items) {
+                const { product_id, quantity } = item;
+                const qtyChange = type === 'SALE' ? -quantity : quantity;
 
-            await runQuery(
-                `INSERT INTO StockMovement (product_id, location_id, type, quantity, reference_type, reference_id, note) VALUES (?, ?, ?, ?, 'TRANSACTION', ?, ?)`,
-                [product_id, locationId, type, qtyChange, transactionId, note || `Manual ${type}`]
-            );
+                await runQuery(
+                    `INSERT INTO StockMovement (product_id, location_id, type, quantity, reference_type, reference_id, note) VALUES (?, ?, ?, ?, 'TRANSACTION', ?, ?)`,
+                    [product_id, locationId, type, qtyChange, transactionId, note || `Manual ${type}`]
+                );
 
-            await runQuery(
-                `UPDATE InventoryStock SET quantity_on_hand = quantity_on_hand + ? WHERE product_id = ? AND location_id = ?`,
-                [qtyChange, product_id, locationId]
-            );
+                await runQuery(
+                    `INSERT INTO InventoryStock (product_id, location_id, quantity_on_hand)
+                     VALUES (?, ?, ?)
+                     ON CONFLICT(product_id, location_id) DO UPDATE SET
+                     quantity_on_hand = quantity_on_hand + EXCLUDED.quantity_on_hand`,
+                    [product_id, locationId, qtyChange]
+                );
+            }
         }
 
         await runQuery('COMMIT');
@@ -347,94 +357,6 @@ app.get('/api/dashboard/stats', async (req, res) => {
         });
     } catch (err: any) {
         res.status(500).json({ error: err.message });
-    }
-});
-
-// Direct Multi-item Sale endpoint
-app.post('/api/sales', async (req, res) => {
-    const { items, total_amount, note, created_by } = req.body;
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ error: 'No items provided' });
-    }
-
-    try {
-        await runQuery('BEGIN TRANSACTION');
-
-        // 1. Record the overall transaction
-        const result = await runQuery(
-            'INSERT INTO Transactions (type, amount, note, created_by) VALUES (?, ?, ?, ?)',
-            ['SALE', total_amount, note || 'Direct Multi-item Sale', created_by || 'Admin']
-        );
-
-        const transactionId = (result as any).lastID;
-
-        // 2. Process each item
-        for (const item of items) {
-            const { product_id, quantity, unit_price } = item;
-
-            // Deduct stock
-            await runQuery(
-                'UPDATE Products SET total_stock = total_stock - ? WHERE id = ?',
-                [quantity, product_id]
-            );
-
-            // Record movement
-            await runQuery(
-                'INSERT INTO InventoryMovements (product_id, location_id, type, quantity, created_by, note) VALUES (?, ?, ?, ?, ?, ?)',
-                [product_id, 1, 'SALE', -quantity, created_by || 'Admin', `Direct Sale (Trans #${transactionId})`]
-            );
-        }
-
-        await runQuery('COMMIT');
-        res.json({ success: true, transactionId });
-    } catch (error: any) {
-        try { await runQuery('ROLLBACK'); } catch (e) { }
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Direct Multi-item Return endpoint
-app.post('/api/returns', async (req, res) => {
-    const { items, total_amount, note, created_by } = req.body;
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ error: 'No items provided' });
-    }
-
-    try {
-        await runQuery('BEGIN TRANSACTION');
-
-        // 1. Record the overall transaction (Negative amount for Return/Expense)
-        const result = await runQuery(
-            'INSERT INTO Transactions (type, amount, note, created_by) VALUES (?, ?, ?, ?)',
-            ['RETURN', -total_amount, note || 'Direct Multi-item Return', created_by || 'Admin']
-        );
-
-        const transactionId = (result as any).lastID;
-
-        // 2. Process each item
-        for (const item of items) {
-            const { product_id, quantity, unit_price } = item;
-
-            // Increase stock
-            await runQuery(
-                'UPDATE Products SET total_stock = total_stock + ? WHERE id = ?',
-                [quantity, product_id]
-            );
-
-            // Record movement
-            await runQuery(
-                'INSERT INTO InventoryMovements (product_id, location_id, type, quantity, created_by, note) VALUES (?, ?, ?, ?, ?, ?)',
-                [product_id, 1, 'RETURN', quantity, created_by || 'Admin', `Direct Return (Trans #${transactionId})`]
-            );
-        }
-
-        await runQuery('COMMIT');
-        res.json({ success: true, transactionId });
-    } catch (error: any) {
-        try { await runQuery('ROLLBACK'); } catch (e) { }
-        res.status(500).json({ error: error.message });
     }
 });
 

@@ -82,14 +82,6 @@ export const inventoryApi = {
     clearDatabase: async (password: string) => {
         const response = await api.post('/settings/clear-database', { password });
         return response.data;
-    },
-    recordSale: async (saleData: { items: any[], total_amount: number, note?: string }) => {
-        const response = await api.post('/sales', saleData);
-        return response.data;
-    },
-    recordReturn: async (returnData: { items: any[], total_amount: number, note?: string }) => {
-        const response = await api.post('/returns', returnData);
-        return response.data;
     }
 };
 

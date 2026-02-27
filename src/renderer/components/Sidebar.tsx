@@ -2,8 +2,6 @@ import React from 'react';
 import {
     LayoutDashboard,
     ShoppingCart,
-    RotateCcw,
-    Package,
     History,
     Library,
     Settings as SettingsIcon,
@@ -19,9 +17,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onLogout }) => {
     const menuItems = [
         { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { id: 'sell', icon: <ShoppingCart size={20} />, label: 'Sell' },
-        { id: 'return', icon: <RotateCcw size={20} />, label: 'Return' },
-        { id: 'orders', icon: <Package size={20} />, label: 'Orders' },
+        { id: 'orders', icon: <ShoppingCart size={20} />, label: 'Orders' },
         { id: 'inventory', icon: <Library size={20} />, label: 'Inventory' },
         { id: 'cashflow', icon: <History size={20} />, label: 'Cashflow' },
         { id: 'settings', icon: <SettingsIcon size={20} />, label: 'Settings' },
