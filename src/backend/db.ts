@@ -6,7 +6,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
-const dbPath = path.resolve(__dirname, '..', '..', 'MakTabati.db');
+const isPackaged = process.env.NODE_ENV === 'production';
+const userDataPath = process.env.USER_DATA_PATH;
+
+let dbPath;
+if (isPackaged && userDataPath) {
+    dbPath = path.join(userDataPath, 'MakTabati.db');
+} else {
+    dbPath = path.resolve(__dirname, '..', '..', 'MakTabati.db');
+}
+
+console.log('Using database at:', dbPath);
 
 export const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {

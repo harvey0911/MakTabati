@@ -1,42 +1,23 @@
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
-import { fork, ChildProcess } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null;
-let backendProcess: ChildProcess | null;
 
-function startBackend() {
-    const serverPath = app.isPackaged
-        ? path.join(process.resourcesPath, 'backend', 'server.js')
-        : path.join(__dirname, '..', 'backend', 'server.js');
+async function startBackend() {
+    process.env.USER_DATA_PATH = app.getPath('userData');
+    process.env.NODE_ENV = app.isPackaged ? 'production' : 'development';
 
-    const nodePath = app.isPackaged
-        ? path.join(process.resourcesPath, 'node_modules')
-        : path.join(__dirname, '..', '..', 'node_modules');
-
-    backendProcess = fork(serverPath, [], {
-        env: {
-            ...process.env,
-            NODE_ENV: app.isPackaged ? 'production' : 'development',
-            NODE_PATH: nodePath
-        }
-    });
-
-    backendProcess.on('message', (msg) => {
-        console.log('Backend message:', msg);
-    });
-
-    backendProcess.on('error', (err) => {
-        console.error('Backend error:', err);
-    });
-
-    backendProcess.on('exit', (code) => {
-        console.error('Backend exited with code:', code);
-    });
+    try {
+        // Dynamic import to ensure environment variables are set first
+        await import('../backend/server.js');
+        console.log('Backend integrated successfully');
+    } catch (err) {
+        console.error('Failed to start integrated backend:', err);
+    }
 }
 
 function createWindow() {
@@ -70,7 +51,6 @@ app.on('ready', () => {
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
-        if (backendProcess) backendProcess.kill();
         app.quit();
     }
 });

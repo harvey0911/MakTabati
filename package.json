@@ -5,14 +5,12 @@
   "main": "dist/main/main.js",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n \"Vite,Backend,Electron\" -c \"blue,green,magenta\" \"npm run dev:renderer\" \"npm run dev:backend\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
+    "dev": "concurrently -n \"Vite,Electron\" -c \"blue,magenta\" \"npm run dev:renderer\" \"npm run dev:electron\"",
     "dev:renderer": "vite",
-    "dev:backend": "tsc src/backend/server.ts src/backend/db.ts --outDir dist/backend --module esnext --moduleResolution node --esModuleInterop && node dist/backend/server.js",
-    "dev:electron": "tsc src/main/main.ts src/main/preload.ts --outDir dist/main --module esnext --moduleResolution node && electron .",
-    "build": "npm run build:renderer && npm run build:main && npm run build:backend && electron-builder",
+    "dev:electron": "tsc --project tsconfig.json && electron .",
+    "build": "npm run build:renderer && npm run build:logic && electron-builder",
     "build:renderer": "vite build",
-    "build:main": "tsc src/main/main.ts src/main/preload.ts --outDir dist/main --module esnext --moduleResolution node",
-    "build:backend": "tsc src/backend/server.ts src/backend/db.ts --outDir dist/backend --module esnext --moduleResolution node --esModuleInterop",
+    "build:logic": "tsc --project tsconfig.json",
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
@@ -24,20 +22,8 @@
     "files": [
       "dist/main/**/*",
       "dist/renderer/**/*",
+      "dist/backend/**/*",
       "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "dist/backend",
-        "to": "backend",
-        "filter": [
-          "**/*.js"
-        ]
-      },
-      {
-        "from": "node_modules",
-        "to": "node_modules"
-      }
     ],
     "win": {
       "target": [
@@ -57,7 +43,8 @@
     },
     "asar": true,
     "asarUnpack": [
-      "node_modules/sqlite3/**/*"
+      "node_modules/sqlite3/**/*",
+      "dist/backend/**/*"
     ]
   },
   "keywords": [],
